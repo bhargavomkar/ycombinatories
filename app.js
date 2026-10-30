@@ -329,6 +329,19 @@ if (heroArt && !reducedMotion.matches && window.matchMedia('(min-width: 901px) a
     pointerY = 0;
     if (!parallaxFrame) parallaxFrame = window.requestAnimationFrame(applyParallax);
   }, { passive: true });
+
+  const heroSection = document.querySelector('.hero');
+  let scrollDriftFrame = 0;
+  const updateScrollDrift = () => {
+    scrollDriftFrame = 0;
+    const bounds = heroSection.getBoundingClientRect();
+    const drift = Math.max(-64, Math.min(0, bounds.top * 0.12));
+    parallaxLayers.forEach(([element]) => element.style.setProperty('--scroll-drift', `${drift.toFixed(2)}px`));
+  };
+  window.addEventListener('scroll', () => {
+    if (heroSection.getBoundingClientRect().bottom <= 0 || scrollDriftFrame) return;
+    scrollDriftFrame = window.requestAnimationFrame(updateScrollDrift);
+  }, { passive: true });
 }
 
 document.querySelectorAll('a[href^="#"]').forEach(link => link.addEventListener('click', event => {
