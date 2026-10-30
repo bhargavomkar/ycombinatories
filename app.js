@@ -194,60 +194,59 @@ document.addEventListener('keydown', event => {
 
 const earlyAccessForm = document.querySelector('#early-access-form');
 const earlyAccessStatus = document.querySelector('#early-access-status');
-const earlyAccessSubmit = earlyAccessForm.querySelector('[type="submit"]');
-function showFormMessage(message, state) {
-  earlyAccessStatus.textContent = message;
-  earlyAccessStatus.dataset.state = state;
-  earlyAccessStatus.setAttribute('role', state === 'error' ? 'alert' : 'status');
-}
-
-earlyAccessForm.addEventListener('submit', async event => {
-  event.preventDefault();
-  if (earlyAccessSubmit.disabled) return;
-
-  if (!earlyAccessForm.reportValidity()) {
-    showFormMessage('Please enter a valid work email and select Individual or Business.', 'error');
-    return;
+if (earlyAccessForm && earlyAccessStatus) {
+  const earlyAccessSubmit = earlyAccessForm.querySelector('[type="submit"]');
+  const defaultSubmitLabel = earlyAccessSubmit.textContent.trim();
+  function showFormMessage(message, state) {
+    earlyAccessStatus.textContent = message;
+    earlyAccessStatus.dataset.state = state;
+    earlyAccessStatus.setAttribute('role', state === 'error' ? 'alert' : 'status');
   }
-
-  // Configure this global before app.js loads; this project intentionally has no default endpoint.
-  const endpoint = typeof window.VERIIDIA_EARLY_ACCESS_ENDPOINT === 'string'
-    ? window.VERIIDIA_EARLY_ACCESS_ENDPOINT.trim()
-    : '';
-  if (!endpoint) {
-    showFormMessage('Your details are valid, but signup is not connected yet. Nothing has been sent or stored.', 'error');
-    return;
-  }
-
-  earlyAccessSubmit.disabled = true;
-  earlyAccessForm.setAttribute('aria-busy', 'true');
-  earlyAccessSubmit.textContent = 'Sending request…';
-  showFormMessage('Sending your request…', 'pending');
-  const formData = new FormData(earlyAccessForm);
-
-  try {
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({
-        email: formData.get('email'),
-        userType: formData.get('userType'),
-        message: formData.get('message')
-      })
-    });
-    if (!response.ok) throw new Error(`Request failed (${response.status})`);
-    showFormMessage('Thank you. Your early-access request was received.', 'success');
-    earlyAccessForm.reset();
-    earlyAccessSubmit.textContent = 'Request received';
+  earlyAccessForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    if (earlyAccessSubmit.disabled) return;
+    if (!earlyAccessForm.reportValidity()) {
+      showFormMessage('Please review the required fields and privacy consent.', 'error');
+      return;
+    }
     earlyAccessSubmit.disabled = true;
-  } catch {
-    showFormMessage('We couldn’t send your request. Please try again later.', 'error');
-    earlyAccessSubmit.textContent = 'Request early access ↗';
-    earlyAccessSubmit.disabled = false;
-  } finally {
-    earlyAccessForm.removeAttribute('aria-busy');
-  }
-});
+    earlyAccessForm.setAttribute('aria-busy', 'true');
+    earlyAccessSubmit.textContent = 'Submitting…';
+    showFormMessage('Submitting your application securely…', 'pending');
+    const formData = new FormData(earlyAccessForm);
+    const payload = Object.fromEntries(formData.entries());
+    payload.consent = formData.get('consent') === 'true';
+    try {
+      const response = await fetch('/api/early-access', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json().catch(() => ({}));
+      if (response.status === 201) {
+        showFormMessage('Your application has been saved. Thank you for your interest.', 'success');
+        earlyAccessForm.reset();
+        earlyAccessSubmit.textContent = 'Application saved';
+        return;
+      }
+      const messages = {
+        400: result.error || 'Please review the required fields and try again.',
+        409: 'An application with this email is already on the list.',
+        429: result.error || 'Too many attempts. Please wait and try again.',
+        503: result.error || 'The application service is unavailable. Nothing was saved.'
+      };
+      showFormMessage(messages[response.status] || 'We could not submit your application. Nothing was confirmed as saved.', 'error');
+    } catch {
+      showFormMessage('We could not reach the application service. Nothing was confirmed as saved.', 'error');
+    } finally {
+      earlyAccessForm.removeAttribute('aria-busy');
+      if (earlyAccessSubmit.textContent !== 'Application saved') {
+        earlyAccessSubmit.disabled = false;
+        earlyAccessSubmit.textContent = defaultSubmitLabel;
+      }
+    }
+  });
+}
 
 const revealTargets = document.querySelectorAll('.section-top, .problem-grid, .fragment-visual, .center-heading, .editorial-copy, .editorial-panels, .how-heading, .steps-track, .platform-heading, .product-carousel, .demo-heading, .demo-shell, .prototype-heading, .prototype-status, .audience-heading, .audience-grid, .trust-layout, .global-grid, .closing-content, .early-access-form');
 revealTargets.forEach(element => element.classList.add('reveal'));
