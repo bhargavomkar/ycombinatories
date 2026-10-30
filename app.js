@@ -1,3 +1,6 @@
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+if (!reducedMotion.matches) document.documentElement.classList.add('motion-enabled');
+
 const capabilities = [
   {
     title: 'Intelligent Form Engine',
@@ -255,13 +258,78 @@ const revealTargets = document.querySelectorAll('.section-top, .problem-grid, .f
 revealTargets.forEach(element => element.classList.add('reveal'));
 if ('IntersectionObserver' in window) {
   const observer = new IntersectionObserver(entries => entries.forEach(entry => {
-    if (entry.isIntersecting) {
-      entry.target.classList.add('in-view');
-      observer.unobserve(entry.target);
-    }
+    entry.target.classList.toggle('in-view', entry.isIntersecting);
   }), { threshold: 0.12 });
   revealTargets.forEach(element => observer.observe(element));
 } else revealTargets.forEach(element => element.classList.add('in-view'));
+
+const wordReveal = document.querySelector('[data-word-reveal]');
+if (wordReveal && !reducedMotion.matches) {
+  const words = [];
+  const source = wordReveal.textContent.trim();
+  wordReveal.replaceChildren();
+  source.split(/(\s+)/).forEach(part => {
+    if (!part.trim()) {
+      wordReveal.append(document.createTextNode(part));
+      return;
+    }
+    const word = document.createElement('span');
+    word.className = 'word-fill';
+    word.textContent = part;
+    wordReveal.append(word);
+    words.push(word);
+  });
+  wordReveal.classList.add('word-reveal-ready');
+
+  let wordRevealFrame = 0;
+  const updateWordReveal = () => {
+    wordRevealFrame = 0;
+    const rect = wordReveal.getBoundingClientRect();
+    const distance = rect.height + window.innerHeight * 0.7;
+    const progress = Math.max(0, Math.min(1, (window.innerHeight * 0.85 - rect.top) / distance));
+    words.forEach((word, index) => {
+      const fill = Math.max(0, Math.min(1, progress * words.length - index));
+      word.style.setProperty('--word-fill', `${Math.round(fill * 100)}%`);
+    });
+  };
+  const scheduleWordReveal = () => {
+    if (!wordRevealFrame) wordRevealFrame = window.requestAnimationFrame(updateWordReveal);
+  };
+  window.addEventListener('scroll', scheduleWordReveal, { passive: true });
+  window.addEventListener('resize', scheduleWordReveal, { passive: true });
+  scheduleWordReveal();
+}
+
+const heroArt = document.querySelector('.hero-art');
+if (heroArt && !reducedMotion.matches && window.matchMedia('(min-width: 901px) and (pointer: fine)').matches) {
+  const parallaxLayers = [
+    [heroArt.querySelector('.workflow-card'), 0.28],
+    [heroArt.querySelector('.paper-back'), -0.5],
+    [heroArt.querySelector('.note-left'), -0.8],
+    [heroArt.querySelector('.note-right'), 0.65]
+  ].filter(([element]) => element);
+  let parallaxFrame = 0;
+  let pointerX = 0;
+  let pointerY = 0;
+  const applyParallax = () => {
+    parallaxFrame = 0;
+    parallaxLayers.forEach(([element, depth]) => {
+      element.style.setProperty('--parallax-x', `${(pointerX * depth).toFixed(2)}px`);
+      element.style.setProperty('--parallax-y', `${(pointerY * depth).toFixed(2)}px`);
+    });
+  };
+  heroArt.addEventListener('pointermove', event => {
+    const bounds = heroArt.getBoundingClientRect();
+    pointerX = ((event.clientX - bounds.left) / bounds.width - 0.5) * 12;
+    pointerY = ((event.clientY - bounds.top) / bounds.height - 0.5) * 8;
+    if (!parallaxFrame) parallaxFrame = window.requestAnimationFrame(applyParallax);
+  }, { passive: true });
+  heroArt.addEventListener('pointerleave', () => {
+    pointerX = 0;
+    pointerY = 0;
+    if (!parallaxFrame) parallaxFrame = window.requestAnimationFrame(applyParallax);
+  }, { passive: true });
+}
 
 document.querySelectorAll('a[href^="#"]').forEach(link => link.addEventListener('click', event => {
   const target = document.querySelector(link.getAttribute('href'));
