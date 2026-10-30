@@ -67,9 +67,6 @@ function renderCapability(index) {
   const caption = document.createElement('div');
   caption.className = 'form-caption';
   caption.append(document.createTextNode(item.caption));
-  const arrow = document.createElement('span');
-  arrow.textContent = '↗';
-  caption.append(arrow);
   capVisual.append(caption);
 
   item.labels.forEach(([labelText, valueText]) => {
@@ -91,9 +88,6 @@ function renderCapability(index) {
     marker.textContent = value;
     fieldMap.append(marker);
   });
-  const check = document.createElement('b');
-  check.textContent = '✓';
-  fieldMap.append(check);
   capVisual.append(fieldMap);
 
   capDots.forEach((dot, dotIndex) => {
@@ -155,11 +149,7 @@ function renderDemo() {
   progress.setAttribute('aria-valuenow', String(demoStep + 1));
   document.querySelector('#demo-step-label').textContent = `STEP ${String(demoStep + 1).padStart(2, '0')}`;
   demoBack.disabled = demoStep === 0;
-  demoNext.replaceChildren(document.createTextNode(demoStep === screens.length - 1 ? 'Restart ' : 'Continue '));
-  const demoArrow = document.createElement('span');
-  demoArrow.setAttribute('aria-hidden', 'true');
-  demoArrow.textContent = demoStep === screens.length - 1 ? '↻' : '→';
-  demoNext.append(demoArrow);
+  demoNext.textContent = demoStep === screens.length - 1 ? 'Restart' : 'Continue';
   demoNext.setAttribute('aria-label', demoStep === screens.length - 1 ? 'Restart sample demonstration' : 'Continue sample demonstration');
 }
 
