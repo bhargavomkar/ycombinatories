@@ -5,7 +5,9 @@ import { validateSignup } from '../lib/signup-validation.js';
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  if (req.method !== 'POST') { res.setHeader('Allow', 'POST'); return res.status(405).json({ error: 'Method not allowed.' }); }
+  const { DATABASE_URL, RATE_LIMIT_SALT } = process.env;
+  if (req.method === 'GET') return res.status(200).json({ configured: Boolean(DATABASE_URL && RATE_LIMIT_SALT) });
+  if (req.method !== 'POST') { res.setHeader('Allow', 'GET, POST'); return res.status(405).json({ error: 'Method not allowed.' }); }
   const contentLength = Number(req.headers['content-length'] || 0);
   if (contentLength > 12000) return res.status(413).json({ error: 'The application is too large.' });
   const contentType = req.headers['content-type'] || '';
@@ -15,7 +17,6 @@ export default async function handler(req, res) {
   const result = validateSignup(body);
   if (result.spam) return res.status(400).json({ error: 'Enter a valid application.' });
   if (result.error) return res.status(400).json({ error: result.error });
-  const { DATABASE_URL, RATE_LIMIT_SALT } = process.env;
   if (!DATABASE_URL || !RATE_LIMIT_SALT) return res.status(503).json({ error: 'The application service is not configured yet. Your information was not stored.' });
   try {
     const sql = neon(DATABASE_URL);

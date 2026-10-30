@@ -192,6 +192,19 @@ if (earlyAccessForm && earlyAccessStatus) {
     earlyAccessStatus.dataset.state = state;
     earlyAccessStatus.setAttribute('role', state === 'error' ? 'alert' : 'status');
   }
+  earlyAccessSubmit.disabled = true;
+  fetch('/api/early-access', { headers: { Accept: 'application/json' } })
+    .then(response => response.ok ? response.json() : Promise.reject(new Error('Service check failed')))
+    .then(result => {
+      if (!result.configured) {
+        showFormMessage('The application service is not configured. Your application cannot be saved yet.', 'error');
+        return;
+      }
+      earlyAccessSubmit.disabled = false;
+      showFormMessage('The application service is ready. We will confirm when your application is saved.', 'ready');
+    })
+    .catch(() => showFormMessage('We could not verify the application service. Please try again later.', 'error'));
+
   earlyAccessForm.addEventListener('submit', async event => {
     event.preventDefault();
     if (earlyAccessSubmit.disabled) return;
